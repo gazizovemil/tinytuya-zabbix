@@ -1,0 +1,314 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<zabbix_export>
+  <version>8.2</version>
+  <template_groups>
+    <template_group>
+      <uuid>606c8e111a5049509a2f334033ab75f2</uuid>
+      <name>Templates/Tuya</name>
+    </template_group>
+  </template_groups>
+  <templates>
+    <template>
+      <uuid>c0cb9a2eda3246efa4a7337889788c8c</uuid>
+      <template>Tuya Smart Plug by TinyTuya</template>
+      <name>Tuya Smart Plug by TinyTuya</name>
+      <description>Read-only local monitoring of Tuya smart plugs via TinyTuya Docker and Zabbix trapper. DPS 1 (relay), 18 (current / 1000), 19 (power / 10), 20 (voltage / 10), 9 (optional countdown), 38 (optional power recovery mode). Adjust DPS mappings and scaling to your device. No accumulated energy is assumed. Configure Allowed hosts for tuya.poll.ok and tuya.status.raw to match the Docker sender IP. The technical hostname must exactly match ZABBIX_HOST.</description>
+      <groups>
+        <group>
+          <name>Templates/Tuya</name>
+        </group>
+      </groups>
+      <items>
+        <item>
+          <uuid>2115683e53c54edbbc42553c19b4f99d</uuid>
+          <name>Tuya: локальный опрос успешен</name>
+          <type>TRAP</type>
+          <key>tuya.poll.ok</key>
+          <delay>0</delay>
+          <description>1=успешно, 0=устройство не ответило или вернуло некорректные данные. Данные присылает мониторинг-контейнер.</description>
+          <tags>
+            <tag>
+              <tag>component</tag>
+              <value>health</value>
+            </tag>
+          </tags>
+          <triggers>
+            <trigger>
+              <uuid>f74315ce8c2b428bad15af72a82e9dcb</uuid>
+              <expression>max(/Tuya Smart Plug by TinyTuya/tuya.poll.ok,#3)=0</expression>
+              <name>Tuya: розетка недоступна по локальному API</name>
+              <priority>HIGH</priority>
+              <description>Три последовательных неудачных опроса.</description>
+            </trigger>
+          <trigger>
+              <uuid>2777042a3add4492a80fd0e0f5e86117</uuid>
+              <expression>nodata(/Tuya Smart Plug by TinyTuya/tuya.poll.ok,5m)=1</expression>
+              <name>Tuya: мониторинг-контейнер перестал передавать данные</name>
+              <priority>AVERAGE</priority>
+            </trigger>
+          </triggers>
+          </item>
+        <item>
+          <uuid>5e2d28562ba3479a95faab5533ad77fb</uuid>
+          <name>Tuya: состояние (JSON)</name>
+          <type>TRAP</type>
+          <key>tuya.status.raw</key>
+          <delay>0</delay>
+          <trends>0</trends>
+          <value_type>TEXT</value_type>
+          <description>Нормализованное состояние вместе с исходными DPS. Обновляется только после успешного опроса.</description>
+          <tags>
+            <tag>
+              <tag>component</tag>
+              <value>raw</value>
+            </tag>
+          </tags>
+        </item>
+        <item>
+          <uuid>328f231d91b3477eae3c99549b2ac636</uuid>
+          <name>Tuya: реле включено</name>
+          <type>DEPENDENT</type>
+          <key>tuya.relay</key>
+          <delay>0</delay>
+          <description>1=включено, 0=выключено. Намеренное выключение Алисой не вызывает тревоги.</description>
+          <preprocessing>
+            <step>
+              <type>JSONPATH</type>
+              <parameters>
+                <parameter>$.relay</parameter>
+              </parameters>
+              <error_handler>DISCARD_VALUE</error_handler>
+            </step>
+          </preprocessing>
+          <master_item>
+            <key>tuya.status.raw</key>
+          </master_item>
+          <tags>
+            <tag>
+              <tag>component</tag>
+              <value>relay</value>
+            </tag>
+          </tags>
+        </item>
+        <item>
+          <uuid>a392dde40867455782b5bcc01f13a042</uuid>
+          <name>Tuya: напряжение</name>
+          <type>DEPENDENT</type>
+          <key>tuya.voltage</key>
+          <delay>0</delay>
+          <value_type>FLOAT</value_type>
+          <units>V</units>
+          <description>DPS20 / 10, стандартная схема Tuya.</description>
+          <preprocessing>
+            <step>
+              <type>JSONPATH</type>
+              <parameters>
+                <parameter>$.voltage_v</parameter>
+              </parameters>
+              <error_handler>DISCARD_VALUE</error_handler>
+            </step>
+          </preprocessing>
+          <master_item>
+            <key>tuya.status.raw</key>
+          </master_item>
+          <tags>
+            <tag>
+              <tag>component</tag>
+              <value>electric</value>
+            </tag>
+          </tags>
+          <triggers>
+            <trigger>
+              <uuid>8a74524f8da2450fa6670bb30a769ca2</uuid>
+              <expression>max(/Tuya Smart Plug by TinyTuya/tuya.voltage,3m)&lt;{$TUYA.VOLT.MIN}</expression>
+              <name>Tuya: низкое напряжение</name>
+              <priority>WARNING</priority>
+            </trigger>
+          <trigger>
+              <uuid>fa123735141e40aeab09365ef779316d</uuid>
+              <expression>min(/Tuya Smart Plug by TinyTuya/tuya.voltage,3m)&gt;{$TUYA.VOLT.MAX}</expression>
+              <name>Tuya: высокое напряжение</name>
+              <priority>WARNING</priority>
+            </trigger>
+          </triggers>
+          </item>
+        <item>
+          <uuid>0a9ce8fcd78a42d8836cc3dfc72f7f27</uuid>
+          <name>Tuya: ток</name>
+          <type>DEPENDENT</type>
+          <key>tuya.current</key>
+          <delay>0</delay>
+          <value_type>FLOAT</value_type>
+          <units>A</units>
+          <description>DPS18 mA / 1000.</description>
+          <preprocessing>
+            <step>
+              <type>JSONPATH</type>
+              <parameters>
+                <parameter>$.current_a</parameter>
+              </parameters>
+              <error_handler>DISCARD_VALUE</error_handler>
+            </step>
+          </preprocessing>
+          <master_item>
+            <key>tuya.status.raw</key>
+          </master_item>
+          <tags>
+            <tag>
+              <tag>component</tag>
+              <value>electric</value>
+            </tag>
+          </tags>
+        </item>
+        <item>
+          <uuid>bae0e1ac7c5c470eb760ef4327cbdcbb</uuid>
+          <name>Tuya: мощность</name>
+          <type>DEPENDENT</type>
+          <key>tuya.power</key>
+          <delay>0</delay>
+          <value_type>FLOAT</value_type>
+          <units>W</units>
+          <description>DPS19 / 10.</description>
+          <preprocessing>
+            <step>
+              <type>JSONPATH</type>
+              <parameters>
+                <parameter>$.power_w</parameter>
+              </parameters>
+              <error_handler>DISCARD_VALUE</error_handler>
+            </step>
+          </preprocessing>
+          <master_item>
+            <key>tuya.status.raw</key>
+          </master_item>
+          <tags>
+            <tag>
+              <tag>component</tag>
+              <value>electric</value>
+            </tag>
+          </tags>
+          <triggers>
+            <trigger>
+              <uuid>78454d5c76604f2381a467d423b3dfab</uuid>
+              <expression>min(/Tuya Smart Plug by TinyTuya/tuya.power,3m)&gt;{$TUYA.POWER.MAX}</expression>
+              <name>Tuya: мощность выше заданного порога</name>
+              <priority>WARNING</priority>
+            </trigger>
+          </triggers>
+        </item>
+        <item>
+          <uuid>e2c061d2600f40a39cc985e0f6395bf3</uuid>
+          <name>Tuya: таймер выключения</name>
+          <type>DEPENDENT</type>
+          <key>tuya.countdown</key>
+          <delay>0</delay>
+          <units>s</units>
+          <description>DPS9, секунды.</description>
+          <preprocessing>
+            <step>
+              <type>JSONPATH</type>
+              <parameters>
+                <parameter>$.countdown_s</parameter>
+              </parameters>
+              <error_handler>DISCARD_VALUE</error_handler>
+            </step>
+          </preprocessing>
+          <master_item>
+            <key>tuya.status.raw</key>
+          </master_item>
+          <tags>
+            <tag>
+              <tag>component</tag>
+              <value>relay</value>
+            </tag>
+          </tags>
+        </item>
+        <item>
+          <uuid>d5729626642241d1817eeb5b870ab04d</uuid>
+          <name>Tuya: режим после восстановления питания</name>
+          <type>DEPENDENT</type>
+          <key>tuya.restore.mode</key>
+          <delay>0</delay>
+          <value_type>CHAR</value_type>
+          <description>DPS38. memory означает восстановление последнего состояния.</description>
+          <preprocessing>
+            <step>
+              <type>JSONPATH</type>
+              <parameters>
+                <parameter>$.restore_mode</parameter>
+              </parameters>
+              <error_handler>DISCARD_VALUE</error_handler>
+            </step>
+          </preprocessing>
+          <master_item>
+            <key>tuya.status.raw</key>
+          </master_item>
+          <tags>
+            <tag>
+              <tag>component</tag>
+              <value>relay</value>
+            </tag>
+          </tags>
+        </item>
+      </items>
+      <macros>
+        <macro>
+          <macro>{$TUYA.POWER.MAX}</macro>
+          <value>2000</value>
+          <description>Порог мощности в ваттах; настрой под нагрузку и номинал розетки.</description>
+        </macro>
+        <macro>
+          <macro>{$TUYA.VOLT.MIN}</macro>
+          <value>190</value>
+          <description>Нижняя граница напряжения, В.</description>
+        </macro>
+        <macro>
+          <macro>{$TUYA.VOLT.MAX}</macro>
+          <value>250</value>
+          <description>Верхняя граница напряжения, В.</description>
+        </macro>
+      </macros>
+    </template>
+  </templates>
+  <graphs>
+    <graph>
+      <uuid>a385b376b7e74f809b6f0dcb6828559d</uuid>
+      <name>Tuya: мощность (Вт)</name>
+      <graph_items>
+        <graph_item>
+          <color>D98719</color>
+          <item>
+            <host>Tuya Smart Plug by TinyTuya</host>
+            <key>tuya.power</key>
+          </item>
+        </graph_item>
+      </graph_items>
+    </graph>
+    <graph>
+      <uuid>19f79d3c4f7a414da6a5ea84115df118</uuid>
+      <name>Tuya: напряжение (В)</name>
+      <graph_items>
+        <graph_item>
+          <color>3478B5</color>
+          <item>
+            <host>Tuya Smart Plug by TinyTuya</host>
+            <key>tuya.voltage</key>
+          </item>
+        </graph_item>
+      </graph_items>
+    </graph>
+    <graph>
+      <uuid>9292e24c0ab64d0d941a325b160a035a</uuid>
+      <name>Tuya: ток (А)</name>
+      <graph_items>
+        <graph_item>
+          <color>27966C</color>
+          <item>
+            <host>Tuya Smart Plug by TinyTuya</host>
+            <key>tuya.current</key>
+          </item>
+        </graph_item>
+      </graph_items>
+    </graph>
+  </graphs>
+</zabbix_export>

@@ -1,0 +1,22 @@
+services:
+  tinytuya-zabbix:
+    image: ${DOCKERHUB_USERNAME:?Set DOCKERHUB_USERNAME in .env}/tinytuya-zabbix:${IMAGE_TAG:-latest}
+    container_name: tinytuya-zabbix
+    restart: unless-stopped
+    network_mode: host
+    env_file:
+      - .env
+    environment:
+      TUYA_DEVICES_FILE: /config/devices.json
+    volumes:
+      - type: bind
+        source: ${TUYA_DEVICES_FILE:?Run ./scripts/setup.sh first}
+        target: /config/devices.json
+        read_only: true
+    read_only: true
+    tmpfs:
+      - /tmp:noexec,nosuid,size=16m
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL

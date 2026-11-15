@@ -1,0 +1,13 @@
+.env
+*.local
+**/devices.json
+**/tinytuya.json
+**/snapshot.json
+**/*secret*
+**/*token*
+__pycache__/
+.pytest_cache/
+*.pyc
+build/
+dist/
+.DS_Store

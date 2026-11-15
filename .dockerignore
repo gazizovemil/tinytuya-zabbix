@@ -1,0 +1,16 @@
+.git
+.github
+.env
+*.local
+**/devices.json
+**/tinytuya.json
+**/snapshot.json
+**/*secret*
+**/*token*
+__pycache__
+.pytest_cache
+*.zip
+tests
+docs
+README*
+zabbix
